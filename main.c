@@ -18,10 +18,7 @@ void readtext(char *text){
 
 
 
-
-
-
-int main(){
+int run(){
 	bool fl = true;
 	while(fl){
 		printf(
@@ -40,7 +37,7 @@ int main(){
 			Password *new = NewPassword(name);
     		Print(new);
             int ciphertext_len = AesEncryptPassword(new, new->ciphertext);
-            printf("Encypted pass: %s\n", new->ciphertext);
+            // printf("Encypted pass: %s\n", new->ciphertext);
             save_to_db(new->key, new->iv, new->ciphertext, strlen(new->ciphertext), new->name);
 			break;
 		case 2:
@@ -54,12 +51,17 @@ int main(){
             decrypt->pass[decryptedtext_len] = '\0';
             printf("Your password: %s\n",  decrypt->pass);
             break;
-
 		default:
 			break;
     	}
 
 	}
+}
+
+
+
+int main(){
+	run();
     return 0;
 
 }

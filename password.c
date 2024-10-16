@@ -8,6 +8,11 @@
 
 #include "password.h"
 
+#define PASSWORD_SYMBOLS "+-/*!&$#?=@<>abcdefghijklnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890"
+#define PASSWORD_LEN 16
+#define KEY_LEN 16
+#define IV_LEN 16
+
 // Отслеживание ошибок
 void handleErrors() {
     fprintf(stderr, "An error occurred\n");
@@ -36,10 +41,10 @@ void Print(Password * this){
 char* GeneratePassword(){
     // Добавление рандомайзера при помощи текущего времени
     srand(time(NULL));
-    char * new_pass = (char *)malloc(16 * sizeof(char));
-    char chars[] = "+-/*!&$#?=@<>abcdefghijklnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890";
+    char * new_pass = (char *)malloc(PASSWORD_LEN * sizeof(char));
+    char chars[] = PASSWORD_SYMBOLS;
     int range = strlen(chars);
-    for(int i = 0; i < 16; i++){
+    for(int i = 0; i < PASSWORD_LEN; i++){
         new_pass[i] = chars[rand() % range];   
     }
     return new_pass;
@@ -65,11 +70,11 @@ Password * LoadPassword(char * name){
     Password * _this = (Password *)malloc(sizeof(Password));
     if (_this != NULL)
     {
-        _this->pass = (char *)malloc(16 * sizeof(char));
+        _this->pass = (char *)malloc(PASSWORD_LEN * sizeof(char));
         _this->name = (char*)malloc(strlen(name) + 1);
         strcpy(_this->name, name);
-        _this->key = malloc(16 * sizeof(unsigned char));
-        _this->iv = malloc(16 * sizeof(unsigned char));
+        _this->key = malloc(KEY_LEN * sizeof(unsigned char));
+        _this->iv = malloc(IV_LEN * sizeof(unsigned char));
         _this->ciphertext = malloc(128*sizeof(unsigned char));
     }
 
@@ -78,7 +83,7 @@ Password * LoadPassword(char * name){
 
 // Генерация рандомного ключа при помощи библиотеки openssl
 unsigned char * GenerateKey(Password * this){
-    unsigned char * key = malloc(16 * sizeof(unsigned char));
+    unsigned char * key = malloc(KEY_LEN * sizeof(unsigned char));
    
     if(!RAND_bytes(key, sizeof(key))) handleErrors();
 
@@ -89,7 +94,7 @@ unsigned char * GenerateKey(Password * this){
 
 // Генерация вектора инициализации при помощи библиотеки openssl
 unsigned char * GenerateIV(Password * this){
-    unsigned char *iv = malloc(16 * sizeof(unsigned char));
+    unsigned char *iv = malloc(IV_LEN * sizeof(unsigned char));
     if(!RAND_bytes(iv, sizeof(iv))) handleErrors();
 
     return iv;
