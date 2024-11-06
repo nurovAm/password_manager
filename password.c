@@ -12,6 +12,8 @@
 #define PASSWORD_LEN 16
 #define KEY_LEN 16
 #define IV_LEN 16
+#define KEY_LENGTH 32  // 256 бит для AES-256
+#define IV_LENGTH 16   // 128 бит для IV AES
 
 // Отслеживание ошибок
 void handleErrors() {
@@ -50,15 +52,23 @@ char* GeneratePassword(){
     return new_pass;
 }
 
+void generate_aes_key(const char *password, unsigned char *key) {
+    if (!PKCS5_PBKDF2_HMAC(password, strlen(password), NULL, 0, 10000, EVP_sha256(), KEY_LENGTH, key)) {
+        handleErrors();
+    }
+}
+
+
 // Класс пароля
-Password * NewPassword(char * name){
+Password * NewPassword(char * name, char * masterpass){
     Password * _this = (Password *)malloc(sizeof(Password));
     if (_this != NULL)
     {
         _this->pass = GeneratePassword();
         _this->name = (char*)malloc(strlen(name) + 1);
         strcpy(_this->name, name);
-        _this->key = GenerateKey(_this);
+        _this->key = malloc(200 * sizeof(unsigned char));
+        generate_aes_key(masterpass, _this->key);
         _this->iv = GenerateIV(_this);
         _this->ciphertext = malloc(128*sizeof(unsigned char));
     }
@@ -90,6 +100,7 @@ unsigned char * GenerateKey(Password * this){
     return key;
 
 }
+
 
 
 // Генерация вектора инициализации при помощи библиотеки openssl
@@ -157,3 +168,11 @@ int AesDecryptPassword(unsigned char *ciphertext, int ciphertext_len, unsigned c
 
     return plaintext_len;
 }
+
+
+
+
+
+
+
+

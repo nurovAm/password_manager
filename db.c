@@ -1,6 +1,6 @@
 #include <sqlite3.h>
 // Функция для сохранения данных в SQLite
-void save_to_db(unsigned char *key, unsigned char *iv, unsigned char *ciphertext, int ciphertext_len, char *name) {
+void save_to_db(unsigned char *iv, unsigned char *ciphertext, int ciphertext_len, char *name, int user_id) {
     sqlite3 *db;
     char *err_msg = 0;
     
@@ -14,12 +14,10 @@ void save_to_db(unsigned char *key, unsigned char *iv, unsigned char *ciphertext
     }
 
     // Преобразуем данные в hex-формат для вставки в базу
-    char key_hex[33];
     char iv_hex[33];
     char ciphertext_hex[ciphertext_len * 2 + 1];
 
     for (int i = 0; i < 16; i++) {
-        sprintf(key_hex + (i * 2), "%02x", key[i]);
         sprintf(iv_hex + (i * 2), "%02x", iv[i]);
     }
     for (int i = 0; i < ciphertext_len; i++) {
@@ -29,9 +27,9 @@ void save_to_db(unsigned char *key, unsigned char *iv, unsigned char *ciphertext
     // SQL-запрос для вставки данных
     char query[1024];
     snprintf(query, sizeof(query), 
-			"CREATE TABLE IF NOT EXISTS encrypted_data (name TEXT, key TEXT, iv TEXT, ciphertext TEXT);"
-             "INSERT INTO encrypted_data (key, iv, ciphertext, name) VALUES ('%s', '%s', '%s', '%s');", 
-             key_hex, iv_hex, ciphertext_hex, name);
+			"CREATE TABLE IF NOT EXISTS encrypted_data (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, iv TEXT, ciphertext TEXT, user_id INTEGER, FOREIGN KEY(user_id) REFERENCES users(id));"
+             "INSERT INTO encrypted_data (iv, ciphertext, name, user_id) VALUES ('%s', '%s', '%s', '%d');", 
+             iv_hex, ciphertext_hex, name, user_id);
 
     // Выполнение SQL-запроса
     rc = sqlite3_exec(db, query, 0, 0, &err_msg);
@@ -46,7 +44,7 @@ void save_to_db(unsigned char *key, unsigned char *iv, unsigned char *ciphertext
 }
 
 // Функция для загрузки данных из SQLite
-void load_from_db(const char *name, unsigned char *key, unsigned char *iv, unsigned char *ciphertext, int *ciphertext_len) {
+void load_from_db(const char *name, unsigned char *iv, unsigned char *ciphertext, int *ciphertext_len, int id) {
     sqlite3 *db;
     sqlite3_stmt *stmt;
 
@@ -61,7 +59,7 @@ void load_from_db(const char *name, unsigned char *key, unsigned char *iv, unsig
 
     // SQL-запрос для получения данных
     char query[256];
-    snprintf(query, sizeof(query), "SELECT key, iv, ciphertext FROM encrypted_data WHERE name='%s';", name);
+    snprintf(query, sizeof(query), "SELECT iv, ciphertext FROM encrypted_data WHERE name='%s' and id='%d';", name, id);
 
     // Подготовка SQL-запроса
     rc = sqlite3_prepare_v2(db, query, -1, &stmt, 0);
@@ -77,12 +75,10 @@ void load_from_db(const char *name, unsigned char *key, unsigned char *iv, unsig
 
     if (rc == SQLITE_ROW) {
         // Преобразуем hex-данные обратно в бинарный формат
-        const unsigned char *key_hex = sqlite3_column_text(stmt, 0);
-        const unsigned char *iv_hex = sqlite3_column_text(stmt, 1);
-        const unsigned char *ciphertext_hex = sqlite3_column_text(stmt, 2);
+        const unsigned char *iv_hex = sqlite3_column_text(stmt, 0);
+        const unsigned char *ciphertext_hex = sqlite3_column_text(stmt, 1);
 
         for (int i = 0; i < 16; i++) {
-            sscanf((const char *)&key_hex[i * 2], "%2hhx", &key[i]);
             sscanf((const char *)&iv_hex[i * 2], "%2hhx", &iv[i]);
         }
 
@@ -99,3 +95,35 @@ void load_from_db(const char *name, unsigned char *key, unsigned char *iv, unsig
     sqlite3_close(db);
 }
 
+
+void save_user_to_db(char* name, char * password_hash){
+    sqlite3 *db;
+    char *err_msg = 0;
+    
+    // Открываем базу данных SQLite
+    int rc = sqlite3_open("password_manager.db", &db);
+    
+    if (rc != SQLITE_OK) {
+        fprintf(stderr, "Cannot open database: %s\n", sqlite3_errmsg(db));
+        sqlite3_close(db);
+        return;
+    }
+
+
+    char query[1024];
+    snprintf(query, sizeof(query), 
+			"CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT, password_hash TEXT);"
+             "INSERT INTO users (username, password_hash) VALUES ('%s', '%s');", 
+             name, password_hash);
+
+    // Выполнение SQL-запроса
+    rc = sqlite3_exec(db, query, 0, 0, &err_msg);
+    
+    if (rc != SQLITE_OK) {
+        fprintf(stderr, "Failed to insert data: %s\n", err_msg);
+        sqlite3_free(err_msg);
+    }
+
+    // Закрываем базу данных
+    sqlite3_close(db);
+}

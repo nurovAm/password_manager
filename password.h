@@ -20,7 +20,7 @@ typedef struct
 
 
 char * GeneratePassword();
-Password * NewPassword(char * name);
+Password * NewPassword(char * name, char * masterpass);
 void Print(Password * this);
 int AesEncryptPassword(Password * this, unsigned char *ciphertext);
 int AesDecryptPassword(unsigned char* ciphertext, int ciphertext_len, unsigned char * key, unsigned char * iv, unsigned char * plaintext);
